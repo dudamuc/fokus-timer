@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fokus-Timer</title>
+<style>
+  :root {
+    --bg: #1a1b26;
+    --card: #24253a;
+    --accent: #7aa2f7;
+    --accent2: #f7768e;
+    --accent3: #9ece6a;
+    --text: #c0caf5;
+    --muted: #565f89;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(160deg, var(--bg), #14151f);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .app {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+    letter-spacing: 0.5px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 24px;
+  }
+  .mode-switch {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .mode-btn {
+    background: transparent;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #14151f;
+    font-weight: 600;
+  }
+  .timer-ring {
+    width: 260px;
+    height: 260px;
+    margin: 0 auto 24px;
+    position: relative;
+  }
+  svg { transform: rotate(-90deg); }
+  .ring-bg { stroke: #2f3049; }
+  .ring-progress {
+    stroke: var(--accent);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke 0.4s;
+  }
+  .time-display {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .time-display .time {
+    font-size: 3rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .time-display .status {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 4px;
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 28px;
+  }
+  .btn {
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn-primary { background: var(--accent); color: #14151f; }
+  .btn-secondary { background: #2f3049; color: var(--text); }
+  .sessions {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+  .sessions strong { color: var(--accent3); }
+  .notify-row { text-align: center; margin: -8px 0 20px; }
+  .notify-btn {
+    background: none;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  .notify-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .task-section {
+    border-top: 1px solid #2f3049;
+    padding-top: 18px;
+  }
+  .task-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .task-input-row input {
+    flex: 1;
+    background: #1e1f30;
+    border: 1px solid #2f3049;
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+  }
+  .task-input-row input:focus { outline: 1px solid var(--accent); }
+  .task-input-row button {
+    background: var(--accent3);
+    border: none;
+    color: #14151f;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #taskList { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; }
+  #taskList li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    border-bottom: 1px solid #262740;
+    font-size: 0.9rem;
+  }
+  #taskList li.done span { text-decoration: line-through; color: var(--muted); }
+  #taskList li input[type=checkbox] { accent-color: var(--accent3); width: 16px; height: 16px; cursor: pointer; }
+  #taskList li span { flex: 1; word-break: break-word; }
+  #taskList li .del {
+    background: none; border: none; color: var(--accent2); cursor: pointer; font-size: 1rem; padding: 2px 6px;
+  }
+  .empty-hint { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 10px 0; }
+
+  .confetti {
+    position: fixed;
+    top: -10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    pointer-events: none;
+    animation: fall linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(540deg); opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🎯 Fokus-Timer</h1>
+  <div class="subtitle">Pomodoro-Technik für konzentriertes Arbeiten</div>
+
+  <div class="mode-switch">
+    <button class="mode-btn active" data-mode="focus" data-min="25">Fokus 25</button>
+    <button class="mode-btn" data-mode="short" data-min="5">Pause 5</button>
+    <button class="mode-btn" data-mode="long" data-min="15">Lange Pause 15</button>
+  </div>
+
+  <div class="timer-ring">
+    <svg width="260" height="260">
+      <circle class="ring-bg" cx="130" cy="130" r="115" stroke-width="14" fill="none"/>
+      <circle class="ring-progress" id="ringProgress" cx="130" cy="130" r="115" stroke-width="14" fill="none"
+        stroke-dasharray="722.6" stroke-dashoffset="0"/>
+    </svg>
+    <div class="time-display">
+      <div class="time" id="timeText">25:00</div>
+      <div class="status" id="statusText">Bereit</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="startBtn">Start</button>
+    <button class="btn btn-secondary" id="resetBtn">Zurücksetzen</button>
+  </div>
+
+  <div class="sessions">Abgeschlossene Fokus-Sessions heute: <strong id="sessionCount">0</strong></div>
+  <div class="notify-row" id="notifyRow"><button class="notify-btn" id="notifyBtn">🔔 Benachrichtigungen aktivieren</button></div>
+
+  <div class="task-section">
+    <div class="task-input-row">
+      <input type="text" id="taskInput" placeholder="Woran arbeitest du?" maxlength="80">
+      <button id="addTaskBtn">+</button>
+    </div>
+    <ul id="taskList"></ul>
+    <div class="empty-hint" id="emptyHint">Noch keine Aufgaben — füge eine hinzu!</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const RING_CIRCUMFERENCE = 2 * Math.PI * 115;
+  const durations = { focus: 25, short: 5, long: 15 };
+  let currentMode = 'focus';
+  let totalSeconds = durations.focus * 60;
+  let remaining = totalSeconds;
+  let timerId = null;
+  let running = false;
+
+  const timeText = document.getElementById('timeText');
+  const statusText = document.getElementById('statusText');
+  const ringProgress = document.getElementById('ringProgress');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const sessionCountEl = document.getElementById('sessionCount');
+  const modeButtons = document.querySelectorAll('.mode-btn');
+
+  ringProgress.style.strokeDasharray = RING_CIRCUMFERENCE;
+
+  const todayKey = 'fokusTimer_sessions_' + new Date().toISOString().slice(0,10);
+  let sessionCount = parseInt(localStorage.getItem(todayKey) || '0', 10);
+  sessionCountEl.textContent = sessionCount;
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  function updateRing() {
+    const fraction = remaining / totalSeconds;
+    const offset = RING_CIRCUMFERENCE * (1 - fraction);
+    ringProgress.style.strokeDashoffset = offset;
+  }
+
+  function updateDisplay() {
+    timeText.textContent = formatTime(remaining);
+    updateRing();
+  }
+
+  function setMode(mode) {
+    currentMode = mode;
+    modeButtons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    totalSeconds = durations[mode] * 60;
+    remaining = totalSeconds;
+    ringProgress.style.stroke = mode === 'focus' ? 'var(--accent)' : (mode === 'short' ? 'var(--accent3)' : 'var(--accent2)');
+    statusText.textContent = mode === 'focus' ? 'Bereit' : 'Pausenzeit';
+    updateDisplay();
+    stopTimer(false);
+  }
+
+  function tick() {
+    remaining--;
+    updateDisplay();
+    if (remaining <= 0) {
+      stopTimer(false);
+      onSessionComplete();
+    }
+  }
+
+  function startTimer() {
+    if (running) return;
+    running = true;
+    startBtn.textContent = 'Pause';
+    statusText.textContent = currentMode === 'focus' ? 'Fokus läuft…' : 'Pause läuft…';
+    timerId = setInterval(tick, 1000);
+  }
+
+  function stopTimer(keepRunningFlag) {
+    running = false;
+    clearInterval(timerId);
+    startBtn.textContent = 'Start';
+    if (!keepRunningFlag) statusText.textContent = currentMode === 'focus' ? 'Bereit' : 'Pausenzeit';
+  }
+
+  function pauseTimer() {
+    running = false;
+    clearInterval(timerId);
+    startBtn.textContent = 'Weiter';
+    statusText.textContent = 'Pausiert';
+  }
+
+  function onSessionComplete() {
+    let notifyTitle, notifyBody;
+    if (currentMode === 'focus') {
+      sessionCount++;
+      localStorage.setItem(todayKey, sessionCount.toString());
+      sessionCountEl.textContent = sessionCount;
+      launchConfetti();
+      statusText.textContent = '🎉 Geschafft! Zeit für eine Pause.';
+      notifyTitle = '🎉 Fokus-Session abgeschlossen!';
+      notifyBody = 'Gut gemacht — Zeit für eine Pause.';
+    } else {
+      statusText.textContent = '✨ Pause vorbei — bereit für den nächsten Fokus?';
+      notifyTitle = '✨ Pause vorbei';
+      notifyBody = 'Bereit für die nächste Fokus-Session?';
+    }
+    notify(notifyTitle, notifyBody);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.15, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      o.start(); o.stop(ctx.currentTime + 0.6);
+    } catch(e) {}
+  }
+
+  const notifyBtn = document.getElementById('notifyBtn');
+  const notifyRow = document.getElementById('notifyRow');
+
+  function refreshNotifyUI() {
+    if (!('Notification' in window)) {
+      notifyRow.style.display = 'none';
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      notifyRow.style.display = 'none';
+    } else if (Notification.permission === 'denied') {
+      notifyBtn.textContent = '🔕 Benachrichtigungen blockiert';
+      notifyBtn.disabled = true;
+    } else {
+      notifyBtn.textContent = '🔔 Benachrichtigungen aktivieren';
+      notifyBtn.disabled = false;
+    }
+  }
+
+  notifyBtn.addEventListener('click', () => {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(refreshNotifyUI);
+  });
+
+  refreshNotifyUI();
+
+  function notify(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification(title, { body, icon: '' });
+      n.onclick = () => window.focus();
+    } catch (e) {}
+  }
+
+  function launchConfetti() {
+    const colors = ['#7aa2f7', '#9ece6a', '#f7768e', '#e0af68'];
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+      el.style.opacity = 1;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (running) pauseTimer();
+    else startTimer();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    stopTimer(false);
+    remaining = totalSeconds;
+    updateDisplay();
+  });
+
+  modeButtons.forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
+
+  updateDisplay();
+
+  // Tasks
+  const taskInput = document.getElementById('taskInput');
+  const addTaskBtn = document.getElementById('addTaskBtn');
+  const taskList = document.getElementById('taskList');
+  const emptyHint = document.getElementById('emptyHint');
+  const TASKS_KEY = 'fokusTimer_tasks';
+
+  function loadTasks() {
+    try { return JSON.parse(localStorage.getItem(TASKS_KEY) || '[]'); }
+    catch(e) { return []; }
+  }
+  function saveTasks(tasks) {
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  }
+
+  let tasks = loadTasks();
+
+  function renderTasks() {
+    taskList.innerHTML = '';
+    emptyHint.style.display = tasks.length === 0 ? 'block' : 'none';
+    tasks.forEach((task, idx) => {
+      const li = document.createElement('li');
+      if (task.done) li.classList.add('done');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = task.done;
+      checkbox.addEventListener('change', () => {
+        tasks[idx].done = checkbox.checked;
+        saveTasks(tasks);
+        renderTasks();
+      });
+      const span = document.createElement('span');
+      span.textContent = task.text;
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '✕';
+      del.addEventListener('click', () => {
+        tasks.splice(idx, 1);
+        saveTasks(tasks);
+        renderTasks();
+      });
+      li.appendChild(checkbox);
+      li.appendChild(span);
+      li.appendChild(del);
+      taskList.appendChild(li);
+    });
+  }
+
+  function addTask() {
+    const text = taskInput.value.trim();
+    if (!text) return;
+    tasks.push({ text, done: false });
+    saveTasks(tasks);
+    taskInput.value = '';
+    renderTasks();
+  }
+
+  addTaskBtn.addEventListener('click', addTask);
+  taskInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  renderTasks();
+})();
+</script>
+</body>
+</html>
