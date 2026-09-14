@@ -1,1 +1,10 @@
 .claude/
+# Persoenliche Daten (Lebenslauf, Fotos, Health-Export) - nie ins Repo
+Damian Dudek/
+# Kalender-Link und Geraeteschluessel
+jarvis/calendar.txt
+jarvis/devices.json
+
+jarvis/.env
+jarvis/*.env
+jarvis/
